@@ -468,22 +468,43 @@ def init_optimizers(net):
 
 def zero_optimizers(optimizers):
     for k, v in optimizers.items():
-        v.zero_grad()
+        v = v.zero_grad()
+    return optimizers
 def step_optimizers(optimizers):
     for k, v in optimizers.items():
-        v.step()
+        v = v.step()
+    return optimizers
 
-def train_with_indep_opt(net, data, iteration=1000):
+def train_with_indep_opt(net, data, iteration=1000000):
     optimizers = init_optimizers(net)
-    for i in range(iteration):
-        zero_optimizers(optimizers)
+    for i in tqdm(range(iteration)):
+        optimizers = zero_optimizers(optimizers)
         loss = net(data)
-        loss.backward(retain_graph=True)
-        step_optimizers(optimizers)
-        print(f"{i}th epoch: {loss}")
+        loss.backward(retain_graph=False)
+        optimizers = step_optimizers(optimizers)
+        if i%1000==0:
+            print(f"{i}th iteration: {loss}")
+
+# Contrast experinments
+def init_optimizers2(net):
+    optimizers = {}
+    list_param = list(net.parameters())
+    optimizers["x"] = torch.optim.Adam([x.detach().cuda().requires_grad_(True) for x in list_param], lr=0.001)
+    return optimizers
+
+def train_with_indep_opt2(net, data, iteration=1000000):
+    optimizers = init_optimizers2(net)
+    for i in tqdm(range(iteration)):
+        optimizers = zero_optimizers(optimizers)
+        loss = net(data)
+        loss.backward(retain_graph=False)
+        optimizers = step_optimizers(optimizers)
+        if i%1000==0:
+            print(f"{i}th iteration: {loss}")
 
 net = MNISTNet2()
 net.cuda()
 train_data = MNISTData(training=True)
 # print(net.list_named_parameters)
-train_with_indep_opt(net, train_data, iteration=1000)
+train_with_indep_opt(net, train_data, iteration=1000000)
+# train_with_indep_opt2(net, train_data, iteration=1000000)
