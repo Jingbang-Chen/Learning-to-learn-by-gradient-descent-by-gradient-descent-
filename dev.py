@@ -439,8 +439,8 @@ class MNISTNet2(MetaModule):
         # inp = w(Variable(inp.view(inp.size()[0], 28 * 28)))
         # out = w(Variable(out))
 
-        inp = inp.view(inp.size()[0], 28 * 28)
-        out = out
+        inp = inp.view(inp.size()[0], 28 * 28).cuda()
+        out = out.cuda()
         cur_layer = 0
         while f"mat_{cur_layer}" in self.layers:
             inp = self.activation(self.layers[f"mat_{cur_layer}"](inp))
@@ -459,11 +459,11 @@ def init_optimizers(net):
     dims = net.get_layer_dimension()
     for k, v in dims.items():
         if "bias" not in k:
-            optimizers[k] = torch.optim.Adam([net.neuron_params(k,-1)], lr=0.001)
+            optimizers[k] = torch.optim.Adam([net.neuron_params(k,-1).detach().cuda().requires_grad_(True)], lr=0.001)
         else:
             for i in range(v):
-                optimizers[f"{k}_{i}"] = torch.optim.Adam([net.neuron_params(k, i)], lr=0.001)
-    optimizers = ModuleDict(optimizers)
+                optimizers[f"{k}_{i}"] = torch.optim.Adam([net.neuron_params(k, i).detach().cuda().requires_grad_(True)], lr=0.001)
+    # optimizers = ModuleDict(optimizers)
     return optimizers
 
 def zero_optimizers(optimizers):
@@ -485,5 +485,5 @@ def train_with_indep_opt(net, data, iteration=1000):
 net = MNISTNet2()
 net.cuda()
 train_data = MNISTData(training=True)
-print(net.list_named_parameters)
+# print(net.list_named_parameters)
 train_with_indep_opt(net, train_data, iteration=1000)
